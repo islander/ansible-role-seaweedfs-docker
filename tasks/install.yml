@@ -1,0 +1,94 @@
+- name: Create a network
+  docker_network:
+    name: seaweed-net
+
+- name: Create master container
+  docker_container:
+    name: master
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 9333:9333
+      - 19333:19333
+    command: "master -ip=master"
+    state: present
+    recreate: yes
+    purge_networks: yes
+    networks:
+      - name: seaweed-net
+
+- name: Create volume container
+  docker_container:
+    name: volume
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 8080:8080
+      - 18080:18080
+      - 9325:9325
+    command: 'volume -mserver="master:9333" -port=8080  -metricsPort=9325'
+    purge_networks: yes
+    networks:
+      - name: seaweed-net
+
+- name: Create filer container
+  docker_container:
+    name: filer
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 8888:8888
+      - 18888:18888
+      - 9326:9326
+    command: 'filer -master="master:9333"  -metricsPort=9326'
+    tty: true
+    interactive: true
+    purge_networks: yes
+    networks:
+      - name: seaweed-net
+
+- name: Create filer container
+  docker_container:
+    name: cronjob
+    image: chrislusf/seaweedfs # use a remote image
+    command: 'cronjob'
+    env:
+      # Run re-replication every 2 minutes
+      CRON_SCHEDULE: '*/2 * * * * *' # Default: '*/5 * * * * *'
+      WEED_MASTER: master:9333 # Default: localhost:9333
+    purge_networks: yes
+    networks:
+      - name: seaweed-net
+
+- name: Create s3 container
+  docker_container:
+    name: s3
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 8333:8333
+      - 9327:9327
+    command: 's3 -filer="filer:8888" -metricsPort=9327'
+    purge_networks: yes
+    networks:
+      - name: seaweed-net
+
+# - name: Create webdav container
+#   docker_container:
+#     name: webdav
+#     image: chrislusf/seaweedfs # use a remote image
+#     ports:
+#       - 7333:7333
+#     command: 'webdav -filer="filer:8888"'
+#     purge_networks: yes
+#     networks:
+#       - name: seaweed-net
+
+# - name: Create prometheus container
+#   docker_container:
+#     name: prometheus
+#     image: prom/prometheus:v2.21.0
+#     ports:
+#       - 9000:9090
+#     volumes:
+#       - ./prometheus:/etc/prometheus
+#     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
+#     purge_networks: yes
+#     networks:
+#       - name: seaweed-net

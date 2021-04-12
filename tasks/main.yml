@@ -1,0 +1,4 @@
+---
+# tasks file for seaweedfs-docker
+- include: preinstall.yml
+- include: install.yml
