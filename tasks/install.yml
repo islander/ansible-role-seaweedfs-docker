@@ -1,3 +1,17 @@
+- name: Make config dir
+  file:
+    path: /opt/seaweed
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+  become: yes
+
+- name: Create a network
+  copy:
+    src: s3config.json
+    dest: /opt/seaweed
+
 - name: Create a network
   docker_network:
     name: seaweed-net
@@ -9,7 +23,7 @@
     ports:
       - 9333:9333
       - 19333:19333
-    command: "-logtostderr master -ip=master -volumeSizeLimitMB=1024"
+    command: "-logtostderr master -ip=master -volumeSizeLimitMB=1024 -defaultReplication=000"
     recreate: yes
     purge_networks: yes
     networks:
@@ -23,8 +37,10 @@
       - 8080:8080
       - 18080:18080
       - 9325:9325
-    command: 'volume -mserver="master:9333" -port=8080  -metricsPort=9325'
+    command: 'volume -max 50 -dir=/data -mserver="master:9333" -port=8080  -metricsPort=9325'
     recreate: yes
+    volumes:
+      - /tmp/data:/data
     purge_networks: yes
     networks:
       - name: seaweed-net
@@ -66,8 +82,10 @@
     ports:
       - 8333:8333
       - 9327:9327
-    command: 's3 -filer="filer:8888" -metricsPort=9327'
+    command: 's3 -config=/etc/s3config.json -filer="filer:8888" -metricsPort=9327'
     recreate: yes
+    volumes:
+      - /opt/seaweed/s3config.json:/etc/s3config.json
     purge_networks: yes
     networks:
       - name: seaweed-net
