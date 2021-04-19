@@ -11,6 +11,7 @@
   copy:
     src: s3config.json
     dest: /opt/seaweed
+  become: yes
 
 - name: Create a network
   docker_network:
