@@ -41,7 +41,7 @@
     command: 'volume -max 50 -dir=/data -mserver="master:9333" -port=8080  -metricsPort=9325'
     recreate: yes
     volumes:
-      - /tmp/data:/data
+      - "{{ seaweed_data_path|default('/data/seaweed') }}:/data"
     purge_networks: yes
     networks:
       - name: seaweed-net
